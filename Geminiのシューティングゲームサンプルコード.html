@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>シューティングゲームサンプル</title>
+<style>
+body {
+  background-color: #f0f0f0;
+  margin: 0;
+  overflow: hidden; /* 画面外へのスクロールを防止 */
+}
+#game-container {
+  position: relative;
+  width: 400px;
+  height: 300px;
+  border: 1px solid #ccc;
+  background-color: #fff;
+}
+#player {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background-color: blue;
+}
+.bullet {
+  position: absolute;
+  width: 5px;
+  height: 10px;
+  background-color: red;
+}
+.enemy {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  background-color: green;
+}
+</style>
+</head>
+<body>
+<div id="game-container">
+  <div id="player"></div>
+</div>
+
+<script>
+const gameContainer = document.getElementById('game-container');
+const player = document.getElementById('player');
+
+let playerX = 180;
+let playerY = 250;
+player.style.left = playerX + 'px';
+player.style.top = playerY + 'px';
+
+// 弾丸の配列
+const bullets = [];
+// 敵の配列
+const enemies = [];
+
+// 弾丸の作成
+function createBullet() {
+  const bullet = document.createElement('div');
+  bullet.classList.add('bullet');
+  bullet.style.left = playerX + 10 + 'px';
+  bullet.style.top = playerY - 10 + 'px';
+  gameContainer.appendChild(bullet);
+  bullets.push(bullet);
+}
+
+// 弾丸の移動
+function moveBullets() {
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const bullet = bullets[i];
+    const bulletY = parseInt(bullet.style.top);
+    if (bulletY < 0) {
+      bullet.remove();
+      bullets.splice(i, 1);
+    } else {
+      bullet.style.top = bulletY - 5 + 'px';
+    }
+  }
+}
+
+// 敵の作成
+function createEnemy() {
+  const enemy = document.createElement('div');
+  enemy.classList.add('enemy');
+  enemy.style.left = Math.random() * 370 + 'px'; // X座標はランダム
+  enemy.style.top = -30 + 'px'; // Y座標は画面外
+  gameContainer.appendChild(enemy);
+  enemies.push(enemy);
+}
+
+// 敵の移動
+function moveEnemies() {
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    const enemy = enemies[i];
+    const enemyY = parseInt(enemy.style.top);
+    if (enemyY > 300) {
+      enemy.remove();
+      enemies.splice(i, 1);
+    } else {
+      enemy.style.top = enemyY + 2 + 'px';
+    }
+  }
+}
+
+// キー入力処理
+document.addEventListener('keydown', (event) => {
+  if (event.key === ' ') { // スペースキー
+    createBullet();
+  } else if (event.key === 'ArrowLeft') { // 左キー
+    playerX -= 10;
+    if (playerX < 0) playerX = 0;
+    player.style.left = playerX + 'px';
+  } else if (event.key === 'ArrowRight') { // 右キー
+    playerX += 10;
+    if (playerX > 380) playerX = 380;
+    player.style.left = playerX + 'px';
+  }
+});
+
+// ゲームループ
+setInterval(() => {
+  moveBullets();
+  moveEnemies();
+  // 衝突判定などの処理を追加
+}, 30); // 30ミリ秒ごとに処理を実行
+</script>
+
+</body>
+</html>
