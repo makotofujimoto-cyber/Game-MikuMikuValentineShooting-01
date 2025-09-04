@@ -1,8 +1,10 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-<title>シューティングゲームサンプル</title>
-<style>
+  <meta charset="UTF-8">
+  <title>シューティングゲームサンプル</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <style>
 body {
   background-color: #f0f0f0; /* 背景色を設定 */
   margin: 0;
@@ -107,7 +109,7 @@ body {
 </style>
 </head>
 <body>
-<div id="game-container">
+  <div id="game-container">
   <div id="gameTitle">  
     <h4>Miku Miku Valentine's Day Shooting Game</h4>
   </div>
@@ -123,212 +125,196 @@ body {
   <button id="start-button">Start Game</button>
 </div>
 
-<script>
-// ゲームの要素を取得
-const gameContainer = document.getElementById('game-container');
-const player = document.getElementById('player');
-const scoreDisplay = document.getElementById('score');
-const timerDisplay = document.getElementById('timer');
-const timerInput = document.getElementById('timer-input');
-const gameOverDisplay = document.getElementById('game-over');
-const hitMessage = document.getElementById('hit-message');
-const hitImage = document.getElementById('hit-image');
-const hitText = document.getElementById('hit-text');
-const startButton = document.getElementById('start-button');
+  <script>
+    // --- 変数定義 ---
+    let gameStarted = false;
+    let gameOver = false;
+    let playerX = 180;
+    let playerY = 530;
+    let score = 0;
+    let timeLeft;
+    let timerInterval;
+    const bullets = [];
+    const enemies = [];
+    const messages = [
+      "おめでとう", "その調子", "ナイスショット！", "がんばって！",
+      "フレーフレー！", "まだまだこれから！", "諦めないで！",
+      "ミクも応援してるよ！", "ミクと一緒に頑張ろう！", "ミクも嬉しい！"
+    ];
+    const hitImages = [
+      "./miku-images/miku (1).png", "./miku-images/miku (2).png",
+      "./miku-images/miku (3).png", "./miku-images/miku (4).png",
+      "./miku-images/miku (5).png", "./miku-images/miku (6).png",
+      "./miku-images/miku (7).png"
+    ];
 
-// プレイヤーの初期位置を設定
-let playerX = 180;
-let playerY = 530;
-player.style.left = playerX + 'px';
-player.style.top = playerY + 'px';
+    // --- DOM取得 ---
+    const gameContainer = document.getElementById('game-container');
+    const player = document.getElementById('player');
+    const scoreDisplay = document.getElementById('score');
+    const timerDisplay = document.getElementById('timer');
+    const timerInput = document.getElementById('timer-input');
+    const gameOverDisplay = document.getElementById('game-over');
+    const hitMessage = document.getElementById('hit-message');
+    const hitImage = document.getElementById('hit-image');
+    const hitText = document.getElementById('hit-text');
+    const startButton = document.getElementById('start-button');
 
-// ゲームの状態を管理する変数
-const bullets = [];
-const enemies = [];
-const messages = [
-    "おめでとう",
-    "その調子",
-    "ナイスショット！",
-    "がんばって！",
-    "フレーフレー！",
-    "まだまだこれから！",
-    "諦めないで！",
-    "ミクも応援してるよ！",
-    "ミクと一緒に頑張ろう！",
-    "ミクも嬉しい！"
-];
-const hitImages = ["ミクの画像/miku (1).png", "ミクの画像/miku (2).png", "ミクの画像/miku (3).png", "ミクの画像/miku (4).png", "ミクの画像/miku (5).png", "ミクの画像/miku (6).png", "ミクの画像/miku (7).png"];
-let score = 0;
-let gameOver = false; // ゲームオーバーフラグ
+    // --- 音声ファイル ---
+    const bulletSound = new Audio('./assets/ショット.mp3');
+    const hitSound = new Audio('./assets/ショット命中.mp3');
+    const alarmSound = new Audio('./assets/警告音1.mp3');
 
-// 効果音の準備
-const bulletSound = new Audio('シューティングゲームフォルダ/ショット.mp3');
-const hitSound = new Audio('シューティングゲームフォルダ/ショット命中.mp3');
-const alarmSound = new Audio('シューティングゲームフォルダ/警告音1.mp3');
-
-// 弾を作成する関数
-function createBullet() {
-  const bullet = document.createElement('div');
-  bullet.classList.add('bullet');
-  bullet.style.left = playerX + 10 + 'px';
-  bullet.style.top = playerY - 10 + 'px';
-  gameContainer.appendChild(bullet);
-  bullets.push(bullet);
-  bulletSound.play(); // 弾を発射する音を再生
-}
-
-// 弾を移動させる関数
-function moveBullets() {
-  for (let i = bullets.length - 1; i >= 0; i--) {
-    const bullet = bullets[i];
-    const bulletY = parseInt(bullet.style.top);
-    if (bulletY < 0) { // 画面外に出た弾を削除
-      bullet.remove();
-      bullets.splice(i, 1);
-    } else {
-      bullet.style.top = bulletY - 5 + 'px'; // 弾を上に移動
-      checkCollision(bullet, i); // 衝突判定
-    }
-  }
-}
-
-// 敵を作成する関数
-function createEnemy() {
-  const enemy = document.createElement('div');
-  enemy.classList.add('enemy');
-  enemy.style.left = Math.random() * 370 + 'px';
-  enemy.style.top = 50 + 'px';//敵が出現する高さ
-  gameContainer.appendChild(enemy);
-  enemies.push(enemy);
-}
-
-// 敵を移動させる関数
-function moveEnemies() {
-  for (let i = enemies.length - 1; i >= 0; i--) {
-    const enemy = enemies[i];
-    const enemyY = parseInt(enemy.style.top);
-    if (enemyY > 600) {  // 画面外に出た敵を削除
-      enemy.remove();
-      enemies.splice(i, 1);
-    } else {
-      enemy.style.top = enemyY + 2 + 'px'; // 敵を下に移動
-      checkPlayerCollision(enemy); // プレイヤーとの衝突判定
-    }
-  }
-}
-
-// 弾と敵の衝突をチェックする関数
-function checkCollision(bullet, bulletIndex) {
-  const bulletRect = bullet.getBoundingClientRect();
-  for (let i = enemies.length - 1; i >= 0; i--) {
-    const enemy = enemies[i];
-    const enemyRect = enemy.getBoundingClientRect();
-    if (bulletRect.left < enemyRect.right &&
-        bulletRect.right > enemyRect.left &&
-        bulletRect.top < enemyRect.bottom &&
-        bulletRect.bottom > enemyRect.top) {
-      bullet.remove(); // 弾を削除
-      bullets.splice(bulletIndex, 1);
-      enemy.remove(); // 敵を削除
-      enemies.splice(i, 1);
-      score++; // スコアを増加
-      scoreDisplay.textContent = 'Score: ' + score; // スコアを表示
-
-      // ヒット音を再生
-      hitSound.play();
-      
-      // ランダムにメッセージと画像を表示
-      const randomMessage = messages[Math.floor(Math.random() * messages.length)];
-      const randomImage = hitImages[Math.floor(Math.random() * hitImages.length)];
-      hitText.textContent = randomMessage;
-      hitImage.src = randomImage;
-      hitMessage.style.display = 'block';
-      setTimeout(() => {
-        hitMessage.style.display = 'none';
-      }, 1000); // 1秒後に非表示にする
-      
-      break;
-    }
-  }
-}
-
-// プレイヤーと敵の衝突をチェックする関数
-function checkPlayerCollision(enemy) {
-  if (gameOver) return; // ゲームオーバー時は判定を行わない
-  const playerRect = player.getBoundingClientRect();
-  const enemyRect = enemy.getBoundingClientRect();
-  if (playerRect.left < enemyRect.right &&
-      playerRect.right > enemyRect.left &&
-      playerRect.top < enemyRect.bottom &&
-      playerRect.bottom > enemyRect.top) {
-    // プレイヤーと敵が衝突
-    gameOver = true;
-    gameOverDisplay.style.display = 'block';
-  }
-}
-
-// キーが押された時の処理
-document.addEventListener('keydown', (event) => {
-  if (gameOver) return; // ゲームオーバー時は操作を受け付けない
-  if (event.key === ' ') {
-    createBullet(); // スペースキーで弾を発射
-  } else if (event.key === 'ArrowLeft') {
-    playerX -= 10; // 左矢印キーでプレイヤーを左に移動
-    if (playerX < 0) playerX = 0; // プレイヤーが画面外に出ないようにする
+    // --- 初期位置設定 ---
     player.style.left = playerX + 'px';
-  } else if (event.key === 'ArrowRight') {
-    playerX += 10; // 右矢印キーでプレイヤーを右に移動
-    if (playerX > 380) playerX = 380; // プレイヤーが画面外に出ないようにする
-    player.style.left = playerX + 'px';
-  }
-});
+    player.style.top = playerY + 'px';
 
-// タイマー関連の変数
-let timeLeft;
-let timerInterval;
+    // --- 弾生成 ---
+    function createBullet() {
+      const bullet = document.createElement('div');
+      bullet.classList.add('bullet');
+      bullet.style.left = playerX + 10 + 'px';
+      bullet.style.top = playerY - 10 + 'px';
+      gameContainer.appendChild(bullet);
+      bullets.push(bullet);
+      bulletSound.play();
+    }
 
-// タイマーを更新する関数
-function updateTimer() {
-  if (timeLeft <= 0) {
-    clearInterval(timerInterval); // タイマーを停止
-    gameOver = true; // ゲームを終了
-    gameOverDisplay.textContent = 'Time Up! Score: ' + score; // スコアを表示
-    gameOverDisplay.style.display = 'block'; // ゲームオーバー画面を表示
-  } else {
-    timeLeft -= 0.01; // 0.01秒ずつ減らす
-    timerDisplay.textContent = timeLeft.toFixed(2); // 小数点以下2桁で表示
-  }
-}
+    // --- 弾移動 ---
+    function moveBullets() {
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        const bullet = bullets[i];
+        const bulletY = parseInt(bullet.style.top);
+        if (bulletY < 0) {
+          bullet.remove();
+          bullets.splice(i, 1);
+        } else {
+          bullet.style.top = bulletY - 5 + 'px';
+          checkCollision(bullet, i);
+        }
+      }
+    }
 
-// ゲームの開始ボタンがクリックされた時の処理
-startButton.addEventListener('click', () => {
-  alarmSound.play(); // 警告音を再生
-  startButton.style.display = 'none'; // スタートボタンを非表示にする
-  
-  // タイマーの設定
-  timeLeft = parseFloat(timerInput.value);
-  if (isNaN(timeLeft) || timeLeft <= 0) {
-    timeLeft = 30.00; // デフォルト値に戻す
-  }
-  timerDisplay.textContent = timeLeft.toFixed(2); // タイマー表示を更新
+    // --- 敵生成 ---
+    function createEnemy() {
+      const enemy = document.createElement('div');
+      enemy.classList.add('enemy');
+      enemy.style.left = Math.random() * 370 + 'px';
+      enemy.style.top = '50px';
+      gameContainer.appendChild(enemy);
+      enemies.push(enemy);
+    }
 
-  // タイマーを開始
-  timerInterval = setInterval(updateTimer, 10); // 0.01秒ごとにタイマーを更新
+    // --- 敵移動 ---
+    function moveEnemies() {
+      for (let i = enemies.length - 1; i >= 0; i--) {
+        const enemy = enemies[i];
+        const enemyY = parseInt(enemy.style.top);
+        if (enemyY > 600) {
+          enemy.remove();
+          enemies.splice(i, 1);
+        } else {
+          enemy.style.top = enemyY + 2 + 'px';
+          checkPlayerCollision(enemy);
+        }
+      }
+    }
 
-  // 敵を生成する間隔を設定
-  setInterval(() => {
-    if (gameOver) return; // ゲームオーバー時は敵生成を行わない
-    createEnemy();
-  }, 1000); // 1秒ごとに敵を生成
+    // --- 衝突判定（弾と敵） ---
+    function checkCollision(bullet, bulletIndex) {
+      const bulletRect = bullet.getBoundingClientRect();
+      for (let i = enemies.length - 1; i >= 0; i--) {
+        const enemy = enemies[i];
+        const enemyRect = enemy.getBoundingClientRect();
+        if (
+          bulletRect.left < enemyRect.right &&
+          bulletRect.right > enemyRect.left &&
+          bulletRect.top < enemyRect.bottom &&
+          bulletRect.bottom > enemyRect.top
+        ) {
+          bullet.remove();
+          bullets.splice(bulletIndex, 1);
+          enemy.remove();
+          enemies.splice(i, 1);
+          score++;
+          scoreDisplay.textContent = 'Score: ' + score;
+          hitSound.play();
+          const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+          const randomImage = hitImages[Math.floor(Math.random() * hitImages.length)];
+          hitText.textContent = randomMessage;
+          hitImage.src = randomImage;
+          hitMessage.style.display = 'block';
+          setTimeout(() => {
+            hitMessage.style.display = 'none';
+          }, 1000);
+          break;
+        }
+      }
+    }
 
-  // ゲームのメインループを設定
-  setInterval(() => {
-    if (gameOver) return; // ゲームオーバー時はゲームループを停止
-    moveBullets();
-    moveEnemies();
-  }, 30); // 30ミリ秒ごとに弾と敵を移動
-});
-</script>
+    // --- 衝突判定（プレイヤーと敵） ---
+    function checkPlayerCollision(enemy) {
+      if (gameOver) return;
+      const playerRect = player.getBoundingClientRect();
+      const enemyRect = enemy.getBoundingClientRect();
+      if (
+        playerRect.left < enemyRect.right &&
+        playerRect.right > enemyRect.left &&
+        playerRect.top < enemyRect.bottom &&
+        playerRect.bottom > enemyRect.top
+      ) {
+        gameOver = true;
+        gameOverDisplay.style.display = 'block';
+      }
+    }
 
+    // --- キー操作 ---
+    document.addEventListener('keydown', (event) => {
+      if (gameOver) return;
+      if (event.key === ' ') {
+        createBullet();
+      } else if (event.key === 'ArrowLeft') {
+        playerX = Math.max(0, playerX - 10);
+        player.style.left = playerX + 'px';
+      } else if (event.key === 'ArrowRight') {
+        playerX = Math.min(380, playerX + 10);
+        player.style.left = playerX + 'px';
+      }
+    });
+
+    // --- タイマー更新 ---
+    function updateTimer() {
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        gameOver = true;
+        gameOverDisplay.textContent = 'Time Up! Score: ' + score;
+        gameOverDisplay.style.display = 'block';
+      } else {
+        timeLeft -= 0.01;
+        timerDisplay.textContent = timeLeft.toFixed(2);
+      }
+    }
+
+    // --- ゲーム開始 ---
+    startButton.addEventListener('click', () => {
+      if (gameStarted) return;
+      gameStarted = true;
+      alarmSound.play();
+      startButton.style.display = 'none';
+      timeLeft = parseFloat(timerInput.value);
+      if (isNaN(timeLeft) || timeLeft <= 0) timeLeft = 30.00;
+      timerDisplay.textContent = timeLeft.toFixed(2);
+      timerInterval = setInterval(updateTimer, 10);
+      setInterval(() => {
+        if (!gameOver) createEnemy();
+      }, 1000);
+      setInterval(() => {
+        if (!gameOver) {
+          moveBullets();
+          moveEnemies();
+        }
+      }, 30);
+    });
+  </script>
 </body>
 </html>
